@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## TO DO:
 -convergence of electrode package
 -document of electrode package
+-compare our result with software Ansys Maxwell
+-why mayavi looks strange? because normal direction wrong?
 
 ## 2022-07 Wenhao He
 
