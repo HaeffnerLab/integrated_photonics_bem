@@ -212,13 +212,13 @@ in the terminal. Remote execution on Berkeley HPC (Savio) requires running
 sbatch saviojob.sh
 ```
 
-The data will be saved as VTK files. The file named as ```<prefix>_<electrode name>.vtk``` stores potential, field (RF only), and field square (RF only). The file named as ```<prefix>_<electrode name>_mesh.vtk``` stores the charge distribution, and the final mesh after adaptive mesh during simulation.
+The data will be saved as VTK files. The file named as ```<prefix>_<electrode_name>.vtk``` stores potential, field (RF only), and field square (RF only). The file named as ```<prefix>_<electrode_name>_mesh.vtk``` stores the charge distribution, and the final mesh after adaptive mesh during simulation.
 
 ### 4. Result analysis <div id='id-6'/> 
 
 Lastly, after we get the results, we can visualize the result by simply calling 
 ```
-Result.view(prefix, '<electrode name>')
+Result.view(prefix, '<electrode_name>')
 ```
 For example, if we want to visualize the field square of the SimpleTrap's RF electrode, we can simply call ```Result.view(prefix, 'RF')``` in the same folder as the result VTK files. Here is the visualization example
 

@@ -34,14 +34,12 @@ class Cylinder(Constraint):
 
     def lookup(self, x):
         # http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
-        print((self.start-x).shape)
         d = np.linalg.norm(np.cross(self.start-x, self.end-x), axis=1)/np.linalg.norm(self.end-self.start)
         dmax = np.sqrt(np.linalg.norm(self.start-self.end)**2 + self.radius**2)
         dx1 = np.linalg.norm(self.start - x, axis=1)
         dx2 = np.linalg.norm(self.end - x, axis=1)
         # return np.where((d<self.radius), self.inside, self.outside)
         return np.where((d<self.radius)&(dx1<dmax)&(dx2<dmax), self.inside, self.outside)
-        # FIXME: cylinder has infinite length
 
 class Box(Constraint):
     def __init__(self, start=None, center=None, diagonal=None, end=None,
