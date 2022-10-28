@@ -130,7 +130,15 @@ Optionally, you can refine the mesh density when exporting in Fusion 360. Howeve
 
 ### 2. Configuring a new job in BEM <div id='id-4'/> 
 
-Firstly, we can pricess STL file locally and export the base mesh in VTK format. Choosing VTK as the mesh format makes it very easy to visulualize and iterate the mesh parameters interactively. 
+Firstly, we can process STL file locally and export the base mesh in VTK format. Choosing VTK as the mesh format makes it very easy to visulualize and iterate the mesh parameters interactively. Visualization can be done by calling 
+```
+mesh.plot()
+```
+if mesh is an ```Mesh``` object, or by calling
+```
+Result.view(prefix, '')
+```
+if you want to directly visualize the mesh VTK file within the same folder.
 
 ![i](imgs/base_mesh_3D.png)
 <center><figcaption>3D visualization of the processed base mesh. Electrodes are colored differently. The top-left slider can choose different electrode and highlight them with bold edges.</figcaption></center>
