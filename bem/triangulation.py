@@ -21,13 +21,17 @@ import logging, itertools, copy
 from collections import OrderedDict
 
 import numpy as np
-try:
-    from tvtk.api import tvtk
-except ImportError:
-    import warnings
-    warnings.warn("not tvtk found")
+import matplotlib.pyplot as plt
 
 from .pytriangle import triangulate
+from .formats import stl
+
+import mpl_toolkits.mplot3d as a3
+import matplotlib.colors as colors
+import pylab as pl
+import numpy as np
+import pyvista as pv
+
 
 def check_rightHand(points,triangles):
     for tri in triangles:
@@ -328,22 +332,24 @@ class Triangulation(object):
         created in future refinements conforms to the minimum of the
         constraints. constraints must not be empty.
         """
-        areas = np.nanmin([
-            c.lookup(self.points) for c in constraints], axis=0)
+        areas = np.nanmin([c.lookup(self.points) for c in constraints], axis=0)
         # take minimum over triangle vertices
-        areas = areas.take(self.triangles).min(axis=-1)
+        # print(areas.shape)
+        # print(self.triangles.shape)
+        areas = areas.take(self.triangles)
+        areas = areas.min(axis=-1)
         self.set_max_areas(areas)
 
     def set_max_areas(self, max_areas):
         self._args["triangleareas"] = max_areas
 
-    def plot(self, ax, axes=(0, 1), *args, **kwargs):
+    def plot(self, ax, axes=(2,0), *args, **kwargs):
         """
         plot 2D projection of mesh (use given axes indices, project
         along remaining axis)
         """
         ax.triplot(self.points[:, axes[0]], self.points[:, axes[1]],
-                self.triangles.copy(), *args, **kwargs)
+            self.triangles.copy(), *args, **kwargs)
 
 
 class Mesh(OrderedDict):
@@ -353,6 +359,7 @@ class Mesh(OrderedDict):
     points = None
     triangles = None
     groups = None
+    names = None
 
     def check(self):
         """
@@ -378,6 +385,10 @@ class Mesh(OrderedDict):
         mesh = cls()
         for name, faces in data.items():
             mesh[name] = [method(face) for face in faces]
+        try:
+            mesh.gather()
+        except Exception as e:
+            print('mesh.gather() not working properly, be sure to have valid input')
         return mesh
 
     @classmethod
@@ -417,9 +428,9 @@ class Mesh(OrderedDict):
         """
         concatenate points and triangles from the individual faces and
         generates group markers (indices into the electrode
-        names/self.keys())
+        names/self.keys()), and generate names for all triangles
         """
-        points, triangles, groups = [], [], []
+        points, triangles, groups, names = [], [], [], []
         n = 0
         for i, (name, faces) in enumerate(self.items()):
             for face in faces:
@@ -428,13 +439,36 @@ class Mesh(OrderedDict):
                 n += face.points.shape[0]
                 groups.append(i*np.ones((face.triangles.shape[0]),
                     dtype=np.intc))
-        self.points, self.triangles, self.groups = map(np.concatenate,
-                (points, triangles, groups))
+                names.append(np.repeat(name, face.triangles.shape[0]))
+        self.points, self.triangles, self.groups, self.names = map(np.concatenate,
+                (points, triangles, groups, names))
         logging.info("%i points, %i triangles from %i electrodes",
                 self.points.shape[0], self.triangles.shape[0],
                 len(self.items()))
         self.check()
-        return self.points, self.triangles, self.groups
+
+
+    def ungather(self):
+        """
+        create individual faces from points, triangles and groups
+        """
+        o = OrderedDict()
+        _, idxs = np.unique(self.names, return_index = True)
+        ordered_unique_names = self.names[np.sort(idxs)]
+        for name in ordered_unique_names:
+            indices = np.where(self.names == name)
+            partial_trs = self.triangles[indices]
+            stl_triangles = np.take(self.points, partial_trs, axis = 0)
+
+            pd = self.to_polydata()
+            stl_normals = pd.cell_normals[indices]
+            
+            # create faces from vtk, assume already unified
+            o[name], _ = stl.partition_normals_interception(stl_normals, stl_triangles, unify = False)
+
+        for name, faces in o.items():
+            self[name] = [Triangulation.from_mesh(face) for face in faces]
+
 
     def fastlap_points(self):
         """returns a point array suitable for fastlap, fastlap likes
@@ -461,59 +495,79 @@ class Mesh(OrderedDict):
         return a vtk PolyData object for this mesh, add named cell_data arrays
         from **kwargs (need to have same length as self.triangles)
         """
-        pd = tvtk.PolyData(points=self.points, polys=self.triangles)
-        e = tvtk.IntArray(name="electrode_index")
-        e.from_array(self.groups)
-        pd.cell_data.add_array(e)
+        # add padding in front of triangles
+        faces = np.insert(self.triangles, 0, 3, axis = 1)
+        pd = pv.PolyData(self.points, faces=faces)
+        pd.cell_data['electrode_name'] = self.names
+        pd.cell_data['electrode_index'] = self.groups
+        pd.cell_data['face_normal'] = pd.cell_normals
         for name, data in kwargs.items():
             if data is None:
                 continue
-            c = tvtk.DoubleArray(name=name)
             assert data.shape[0] == self.triangles.shape[0]
-            c.from_array(data)
-            pd.cell_data.add_array(c)
+            pd.cell_data[name] = data
         return pd
 
     def to_vtk(self, prefix, **kwargs):
         """saves mesh as prefix_mesh.vtk"""
         pd = self.to_polydata(**kwargs)
-        # pdw = tvtk.PolyDataWriter(input=pd)
-        pdw = tvtk.PolyDataWriter()
-        pdw.set_input_data(pd)
-        pdw.file_name = "%s_mesh.vtk" % prefix
-        pdw.write()
+        file_name = "%s_mesh.vtk" % prefix
+        pd.save(file_name)
         logging.debug("written mesh to %s, polydata %s",
-                pdw.file_name, kwargs.keys())
+                file_name, kwargs.keys())
         return pd
 
     @classmethod
     def from_polydata(cls, pd):
         """loads mesh from polydata in pd"""
         obj = cls()
-        obj.points = pd.points.to_array()
+        obj.points = np.asarray(pd.points)
         # drop the repeated first point
-        obj.triangles = pd.polys.to_array().reshape(-1, 4)[:, 1:]
+        obj.triangles = np.asarray(pd.faces.reshape(-1, 4)[:, 1:])
         datasets = {}
-        for i in range(pd.cell_data.number_of_arrays):
-            name = pd.cell_data.get_array_name(i)
-            da = pd.cell_data.get_array(i)
-            data = da.to_array()
-            if name == "electrode_index":
-                obj.groups = data
+        for name in pd.cell_data.keys():
+            data = pd.cell_data[name]
+            if name == "electrode_name":
+                obj.names = np.asarray(data)
+            elif name == "electrode_index":
+                obj.groups = np.asarray(data)
             else:
-                datasets[name] = data
+                datasets[name] = np.asarray(data)
+        obj.ungather()
         return obj, datasets
 
     @classmethod
     def from_vtk(cls, prefix):
         """loads mesh from vtk polydata"""
-        pdr = tvtk.PolyDataReader()
-        pdr.file_name = "%s_mesh.vtk" % prefix
-        pdr.update()
-        return cls.from_polydata(pdr.output)
+        file_name = "%s_mesh.vtk" % prefix
+        pd = pv.PolyData(file_name)
+        return cls.from_polydata(pd)
 
-    def plot(self, ax, *args, **kwargs):
-        """plot mesh"""
-        for name, faces in self.items():
-            for face in faces:
-                face.plot(ax, *args, **kwargs)
+    def plot(self):
+        """plot mesh in 3D pyvista Plotter"""
+        pd = self.to_polydata()
+        plotter = pv.Plotter(notebook = False)
+        colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', 
+                  '#2ca02c', '#98df8a', '#d62728', '#ff9896', 
+                  '#9467bd', '#c5b0d5', '#8c564b', '#c49c94', 
+                  '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', 
+                  '#bcbd22', '#dbdb8d', '#17becf', '#9edae5',
+                  # above is colormap tab20 from matplotlib
+                  '#0000FF', '#7FFF00', '#4B0082', '#FF00FF', '#800000', '#FFFF00', '#B8860B', '#F0E68C', '#FFFFFF',
+                  # above is blue, chartreuse, indigo, magenta, maroon, yellow, darkgoldenrod, khaki, white
+                  ]
+
+        def callback_func(electrode_name):
+            idc_name = np.where(pd.cell_data['electrode_name'] == electrode_name)
+            selected_faces = pd.faces.reshape(-1, 4)[idc_name]
+            selected_mesh = pv.PolyData(pd.points, faces = selected_faces)
+            plotter.add_mesh(selected_mesh, name = 'select', style = 'wireframe', line_width=5, color='black')
+
+        plotter.add_mesh(pd, scalars = 'electrode_name', 
+                         scalar_bar_args = {'interactive': True, 'label_font_size': 15}, 
+                         cmap = colors, show_edges = True)
+        electrode_list = list(np.unique(pd.cell_data['electrode_name']))
+        plotter.add_text_slider_widget(callback_func, electrode_list, pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
+        plotter.show_bounds()
+        plotter.add_camera_orientation_widget()
+        plotter.show()

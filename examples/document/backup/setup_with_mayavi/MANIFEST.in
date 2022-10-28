@@ -1,2 +1,0 @@
-include bem/*.c bem/*.h
-include fastlap/*.c fastlap/*.h

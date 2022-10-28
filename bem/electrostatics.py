@@ -21,13 +21,8 @@ import pickle
 import logging, re, operator, os
 
 import numpy as np
-try:
-    from tvtk.api import tvtk
-    from mayavi.modules.surface import Surface
-    from mayavi.modules.iso_surface import IsoSurface
-except ImportError:
-    import warnings
-    warnings.warn("not tvtk found")
+import pyvista as pv
+
 
 from .fastlap import (fastlap, centroid,
         TRIANGLE, NO_SOURCE, CONSTANT_SOURCE, INDIRECT, FIELD)
@@ -41,27 +36,22 @@ class Result(object):
     grid = None
     potential = None
     field = None
-    pseudo_potential = None
+    field_square = None
+
 
     def to_vtk(self, prefix):
         """
         export the result to vtk
         the mesh and its triangle data go to prefix_name_mesh.vtk,
-        the potential/field/pseudopotential go to prefix_name.vtk
+        the potential/field/field_square go to prefix_name.vtk
         all arrays are named
         """
         if self.configuration is not None:
             self.configuration.to_vtk(prefix)
-        sp = tvtk.StructuredPoints(
-                origin=self.grid.get_origin(),
-                spacing=self.grid.step,
-                dimensions=self.grid.shape)
-        # spw = tvtk.StructuredPointsWriter(input=sp)
-        spw = tvtk.StructuredPointsWriter()
-        spw.set_input_data(sp)
-        spw.file_name = "%s_%s.vtk" % (prefix, self.configuration.name)
-        #xidr = tvtk.XMLImageDataWriter(input=sp)
-        for data_name in "potential field pseudo_potential".split():
+        sg = pv.UniformGrid(dims = self.grid.shape, 
+                            spacing = self.grid.step, 
+                            origin = self.grid.get_origin())
+        for data_name in "potential field field_square".split():
             data = getattr(self, data_name)
             if data is None:
                 continue
@@ -69,11 +59,10 @@ class Result(object):
                 data = data.T.reshape(-1, data.shape[0])
             else:
                 data = data.T.flatten()
-            d = tvtk.DoubleArray(name=data_name)
-            d.from_array(data)
-            sp.point_data.add_array(d)
-        spw.write()
-        logging.info("wrote %s", spw.file_name)
+            sg.point_data[data_name] = data
+        file_name = "%s_%s.vtk" % (prefix, self.configuration.name)
+        sg.save(file_name)
+        logging.info("wrote %s", file_name)
 
     @classmethod
     def from_vtk(cls, prefix, name):
@@ -82,21 +71,17 @@ class Result(object):
         """
         obj = cls()
         obj.configuration = Configuration.from_vtk(prefix, name)
-        spr = tvtk.StructuredPointsReader(
-            file_name="%s_%s.vtk" % (prefix, name))
-        spr.update()
-        sp = spr.output    # may need to change to "get_output()" in updated mayavi.tvtk
-        for i in range(sp.point_data.number_of_arrays):
-            da = sp.point_data.get_array(i)
-            name = da.name
-            data = da.to_array()
-            step = sp.spacing
-            origin = sp.origin
-            shape = tuple(sp.dimensions)
+        file_name="%s_%s.vtk" % (prefix, name)
+        ug = pv.UniformGrid(file_name)
+        for name in ug.array_names:
+            data = ug.point_data[name]
+            step = ug.spacing
+            origin = ug.origin
+            shape = ug.dimensions
             dim = shape[::-1]
-            if da.number_of_components > 1:
-                dim += (da.number_of_components,)
-            data = data.reshape(dim).T
+            if data.ndim > 1:
+                dim += (data.shape[-1],)
+            data = np.asarray(data.reshape(dim).T)
             setattr(obj, name, data)
         # FIXME: only uses last array's data for grid
         center = origin+(np.array(shape)-1)/2.*step
@@ -131,86 +116,62 @@ class Result(object):
         if format == 'pkl':
             return self.to_pkl(prefix)
 
+
     @staticmethod
     def view(prefix, name):
         """
         construct a generic visualization of base mesh, refined mesh,
-        and potential/field/pseudopotential data in mayavi2
-        requires running within mayavi2 or ipython with threads or
-        something like::
+        and potential/field/pseudopotential data using pyvista
 
-            from pyface.api import GUI
-            GUI().start_event_loop()
-
-        in your script to interact with it.
-
-        this is from a simplified macro recorded in mayavi2
-        """
-        """
-        wwc 11/23/2018
-        In both python 2.7 and 3.5, this 3D visualization with mayavi 
-        works in Linux, but it's not compatible with X11 remote forwarding. 
-        Install mayavi through conda channel "menpo" in python 3.5 or just 
-        see environment setup of "ele35" in README. However, I haven't 
-        found a mayavi version for python 3.6.
         """
 
-        import mayavi
-        try:
-            from mayavi.api import Engine
-            engine = Engine()
-            engine.start()
-        except AttributeError: # NameError:
-            engine = mayavi.engine
-
-        if len(engine.scenes) == 0:
-            engine.new_scene()
-
-        scene = engine.scenes[0]
+        plotter = pv.Plotter(notebook = False)
 
         base_mesh_name = "%s_mesh.vtk" % prefix
-        if os.access(base_mesh_name, os.R_OK):
-            base_mesh = engine.open(base_mesh_name)
-            surface = Surface()
-            engine.add_filter(surface, base_mesh)
-            surface.actor.property.representation = 'wireframe'
-            surface.actor.property.line_width = 1
-
         mesh_name = "%s_%s_mesh.vtk" % (prefix, name)
+
+        def callback_func(electrode_name):
+            idc_name = np.where(mesh.cell_data['electrode_name'] == electrode_name)
+            selected_faces = mesh.faces.reshape(-1, 4)[idc_name]
+            selected_mesh = pv.PolyData(mesh.points, faces = selected_faces)
+            plotter.add_mesh(selected_mesh, name = 'select', style = 'wireframe', line_width=5, color='black')
+
         if os.access(mesh_name, os.R_OK):
-            mesh = engine.open(mesh_name)
-            mesh.cell_scalars_name = 'charge'
-            surface = Surface()
-            engine.add_filter(surface, mesh)
-            module_manager = mesh.children[0]
-            module_manager.scalar_lut_manager.lut_mode = 'RdBu'
-            module_manager.scalar_lut_manager.use_default_range = False
-            r = np.fabs(module_manager.scalar_lut_manager.data_range).max()
-            module_manager.scalar_lut_manager.data_range = [-r, r]
-            surface.actor.property.backface_culling = True
+            mesh = pv.PolyData(mesh_name)
+            plotter.add_mesh(mesh, scalars = 'charge', cmap = 'RdBu', show_edges = True)
+            electrode_list = list(np.unique(mesh.cell_data['electrode_name']))
+            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
+        elif os.access(base_mesh_name, os.R_OK):
+            mesh = pv.PolyData(base_mesh_name)
+            colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', 
+                      '#2ca02c', '#98df8a', '#d62728', '#ff9896', 
+                      '#9467bd', '#c5b0d5', '#8c564b', '#c49c94', 
+                      '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', 
+                      '#bcbd22', '#dbdb8d', '#17becf', '#9edae5',
+                      # above is colormap tab20 from matplotlib
+                      '#0000FF', '#7FFF00', '#4B0082', '#FF00FF', '#800000', '#FFFF00', '#B8860B', '#F0E68C', '#FFFFFF',
+                      # above is blue, chartreuse, indigo, magenta, maroon, yellow, darkgoldenrod, khaki, white
+                      ]
+            plotter.add_mesh(mesh, scalars = 'electrode_name', 
+                            scalar_bar_args = {'interactive': True, 'label_font_size': 15}, 
+                            cmap = colors, show_edges = True)
+            electrode_list = list(np.unique(mesh.cell_data['electrode_name']))
+            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
 
         data_name = "%s_%s.vtk" % (prefix, name)
         if os.access(data_name, os.R_OK):
-            data = engine.open(data_name)
-            if "pseudo_potential" in data._point_scalars_list:
-                data.point_scalars_name = "pseudo_potential"
+            data = pv.UniformGrid(data_name)
+            if 'field_square' in data.point_data.keys():
+                scalar_name = 'field_square'
             else:
-                data.point_scalars_name = "potential"
-            iso_surface = IsoSurface()
-            engine.add_filter(iso_surface, data)
-            module_manager = data.children[0]
-            module_manager.scalar_lut_manager.lut_mode = 'Greys'
-            iso_surface.contour.auto_contours = True
-            iso_surface.contour.number_of_contours = 5
-            try:
-                iso_surface.contour.maximum_contour = 1e-2
-            except:
-                pass
+                scalar_name = 'potential'
+            iso_surfaces = data.contour(isosurfaces = 10, scalars = scalar_name, rng = [0, 0.015])
+            plotter.add_mesh(iso_surfaces, cmap = 'Greys', opacity = 1)
+            plotter.add_mesh_isovalue(data, cmap = 'Greys', scalars = scalar_name,  pointa=(0.4, 0.9), pointb=(0.9, 0.9))
 
-        scene.scene.isometric_view()
-        scene.scene.render()
-
-    #def to_pickle(self,prefix):
+        plotter.show_bounds()
+        plotter.add_camera_orientation_widget()
+        plotter.show()
 
 
 class Configuration(object):
@@ -253,6 +214,9 @@ class Configuration(object):
         """
         x = np.ascontiguousarray(self.mesh.fastlap_points())
         m = x.shape[0]
+        # # get mesh.groups index referenced to mesh.keys()
+        # keys_array = np.asarray(list(self.mesh.keys()))
+        # indices = np.where(self.mesh.groups[:, None] == keys_array[None, :])[1]
         panel_potential = self.potentials[self.mesh.groups]
         shape = TRIANGLE*np.ones((m,), dtype=np.intc)
         panel_centroid = centroid(x, shape)
@@ -387,7 +351,7 @@ class Configuration(object):
             res.field = field.reshape((3,) + grid.shape)
             if pseudopotential:
                 pp = np.square(field).sum(axis=0).reshape(grid.shape)
-                res.pseudo_potential = pp
+                res.field_square = pp
 
         logging.info("done with job %s, %s, %s, %s", self.name, potential, field,
                 pseudopotential)

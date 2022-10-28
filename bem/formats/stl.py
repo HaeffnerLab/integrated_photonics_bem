@@ -3,7 +3,7 @@ import struct
 
 import numpy as np
 
-def unify_dup_points(o_points,o_triangles):
+def unify_dup_points(o_points,o_triangles, tol = 1e-6):
     # define a point index dictionary to combine same points
     o_n = len(o_points)
     uni_dict = {}
@@ -11,7 +11,7 @@ def unify_dup_points(o_points,o_triangles):
     for i in range(o_n):
         for j in uni_dict.keys():
             # if point is the same
-            if np.linalg.norm(o_points[i]-o_points[j],1) < 1e-6:
+            if np.linalg.norm(o_points[i]-o_points[j], 1) < tol * np.linalg.norm(o_points[i], 1):
                 uni_dict[i] = uni_dict[j]
                 break
         else:
@@ -100,25 +100,25 @@ def check_normals(normals, triangles):
     assert np.allclose(n, normals, rtol=1e-3, atol=1e-10)
 
 # wwc function
-def partition_normals(normals,triangles,numbers=[],TOL=1e-6):
+def partition_normals(normals,triangles,numbers=[],TOL=5e-6):
     """Partition points into different planes according to the normals in 
     one electrode, for 3D/2D meshing (Shewchuk's triangle C code is 2D meshing).
     Return points_numbers which has following format
-
     [(plane1_points,serial_numbers1),(plane2_points,serial_numbers2),...]
-
     plane_points -- array([ [x1,y1,z1],[x2,y2,z2],... [xn,yn,zn] ])
     serial_numbers -- array([ [0,1,2],[3,4,5],... [n-3,n-2,n-1] ])
-
     TOL: normal deviation tolerances
     """
     nm_unique = [normals[0]]      # normals[0] as the first nm
     points = [[]]    # Each sublist [] represents a plane
-    for nm, tr in zip(normals, triangles):
+    points[-1].extend(triangles[0])
+    for nm, tr in zip(normals[1:], triangles[1:]):
         add_plane = True
         # Search existing normals in nm_unique, in reversed order. (Faces in the same plane are often ajacent.)
         for ith in range(len(nm_unique)-1,-1,-1):   # ith normal -- ith plane
-            if np.linalg.norm(nm-nm_unique[ith]) < TOL:
+            diff = np.array(points[ith][-1]) - tr
+            dot_abs = np.abs(nm_unique[ith] @ diff.T)
+            if np.all(dot_abs < TOL):
                 # Plane points aren't grouped by triangles -- [array([x1,y1,z1]),array([x2,y2,z2]), ...]
                 points[ith].extend(tr)
                 add_plane = False
@@ -140,7 +140,7 @@ def partition_normals(normals,triangles,numbers=[],TOL=1e-6):
 # hwh function
 # partite by two standards:1.same normal 2. same interception 
 # automatically unify same points
-def partition_normals_interception(normals,triangles,numbers=[],TOL=1e-6, TOL2 = 1e-6):
+def partition_normals_interception(normals,triangles,TOL=1e-6, TOL2 = 1e-6, unify = True):
     # hwh_warning: this TOL2 must be adapted with scale
     """Partition points into different planes according to the normals in 
     one electrode, for 3D/2D meshing (Shewchuk's triangle C code is 2D meshing).
@@ -169,7 +169,14 @@ def partition_normals_interception(normals,triangles,numbers=[],TOL=1e-6, TOL2 =
         add_plane = True
         # Search existing normals in nm_unique, in reversed order. (Faces in the same plane are often ajacent.)
         for ith in range(len(nm_unique)-1,-1,-1):   # ith normal -- ith plane
-            if np.linalg.norm(nm-nm_unique[ith]) < TOL and np.linalg.norm(ic-ic_unique[ith]) < TOL2:
+            bool_nm_1 = np.abs((nm @ nm_unique[ith]) - (np.linalg.norm(nm) * np.linalg.norm(nm_unique[ith]))) < TOL
+            bool_ic_1 = np.abs(ic - ic_unique[ith]) <= TOL2 * np.abs(ic)
+            bool1 = bool_nm_1 and bool_ic_1
+
+            bool_nm_2 = np.abs((nm @ -nm_unique[ith]) - (np.linalg.norm(nm) * np.linalg.norm(nm_unique[ith]))) < TOL
+            bool_ic_2 = np.abs(ic + ic_unique[ith]) <= TOL2 * np.abs(ic)
+            bool2 = bool_nm_2 and bool_ic_2
+            if bool1 or bool2:
                 # Plane points aren't grouped by triangles -- [array([x1,y1,z1]),array([x2,y2,z2]), ...]
                 points[ith].extend(tr)
                 add_plane = False
@@ -185,8 +192,9 @@ def partition_normals_interception(normals,triangles,numbers=[],TOL=1e-6, TOL2 =
         plane_points = np.ascontiguousarray(plane,dtype=np.double)
         i = np.arange(0,plane_points.shape[0],3)    # shape[0] is the number of points in the plane.
         index_numbers = np.c_[i, i+1, i+2].astype(np.intc)
-        # unify duplicated points
-        plane_points,index_numbers = unify_dup_points(plane_points,index_numbers) 
+        if unify:
+            # unify duplicated points
+            plane_points,index_numbers = unify_dup_points(plane_points,index_numbers) 
         # verify it is right handed
         plane_points,index_numbers = correct_normals(nm, plane_points, index_numbers)
 

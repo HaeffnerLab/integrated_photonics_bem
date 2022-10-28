@@ -28,15 +28,19 @@ class Constraint(object):
         raise NotImplemented
 
 class Cylinder(Constraint):
-    def __init__(self, start, length, radius, *a, **k):
-        self.start, self.length, self.radius = (start, length, radius)
+    def __init__(self, start, end, radius, *a, **k):
+        self.start, self.end, self.radius = (start, end, radius)
         super(Cylinder, self).__init__(*a, **k)
 
     def lookup(self, x):
         # http://mathworld.wolfram.com/Point-LineDistance3-Dimensional.html
-        a = self.start-self.x
-        d = np.norm(np.cross(self.length, a))/np.norm(self.length+a)
-        return np.where(d < self.radius, self.inside, self.outside)
+        print((self.start-x).shape)
+        d = np.linalg.norm(np.cross(self.start-x, self.end-x), axis=1)/np.linalg.norm(self.end-self.start)
+        dmax = np.sqrt(np.linalg.norm(self.start-self.end)**2 + self.radius**2)
+        dx1 = np.linalg.norm(self.start - x, axis=1)
+        dx2 = np.linalg.norm(self.end - x, axis=1)
+        # return np.where((d<self.radius), self.inside, self.outside)
+        return np.where((d<self.radius)&(dx1<dmax)&(dx2<dmax), self.inside, self.outside)
         # FIXME: cylinder has infinite length
 
 class Box(Constraint):
