@@ -4,7 +4,7 @@ from bem.formats import stl
 from time import time
 import ipyparallel as ipp
 
-prefix = "htrap_overhang_v2"
+prefix = "SimpleTrap"
 
 # load processed mesh from vtk file: prefix_mesh.vtk
 
