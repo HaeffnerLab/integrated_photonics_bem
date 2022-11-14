@@ -12,7 +12,7 @@
 #SBATCH --nodes=1
 #
 # Wall clock limit:
-#SBATCH --time=00:10:00
+#SBATCH --time=00:00:10
 #
 ## Command(s) to run:
 module load python/3.9.12

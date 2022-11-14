@@ -165,7 +165,7 @@ class Result(object):
                 scalar_name = 'field_square'
             else:
                 scalar_name = 'potential'
-            iso_surfaces = data.contour(isosurfaces = 10, scalars = scalar_name, rng = [0, 0.015])
+            iso_surfaces = data.contour(isosurfaces = 10, scalars = scalar_name])
             plotter.add_mesh(iso_surfaces, cmap = 'Greys', opacity = 1)
             plotter.add_mesh_isovalue(data, cmap = 'Greys', scalars = scalar_name,  pointa=(0.4, 0.9), pointb=(0.9, 0.9))
 
