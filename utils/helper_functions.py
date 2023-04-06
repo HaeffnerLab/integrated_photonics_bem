@@ -358,20 +358,13 @@ def write_pickle(fin,fout,grid,strs):
     result0 = Result.load(fin, strs[0], trans_file)
     p0 = result0.potential
     for ele in strs:
-        # if ele not in excl:
         result = Result.load(fin, ele,trans_file)
         if ele=='RF':
             p = result.field_square
         else:
             p = result.potential
-        # p = np.swapaxes(p, 0, 2)
-        # p = np.swapaxes(p, 0, 1)
         trap[ele] = {'potential': p}
         trap[ele]['position'] = [0, i]
-        # else:
-        #     trap[ele] = {'potential': np.zeros(np.shape(p0))}
-        #     trap[ele]['position'] = [0, i]
-        # i = i + 1
 
     electrode_list = strs
 

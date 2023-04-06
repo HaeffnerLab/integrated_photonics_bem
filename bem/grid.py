@@ -51,8 +51,8 @@ class Grid(object):
 
     def to_xyz(self):
         """ Create ndarrays of x, y, z"""
-        xyz = np.array([np.linspace(c-s*(h-1)/2., c+s*(h-1)/2.,h)
-                for c, s, h in zip(self.center, self.step, self.shape)])
+        xyz = [np.linspace(c-s*(h-1)/2., c+s*(h-1)/2.,h)
+                for c, s, h in zip(self.center, self.step, self.shape)]
         return xyz
 
     def indices_to_coordinates(self, idx):
