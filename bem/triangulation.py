@@ -565,9 +565,10 @@ class Mesh(OrderedDict):
 
         plotter.add_mesh(pd, scalars = 'electrode_name', 
                          scalar_bar_args = {'interactive': True, 'label_font_size': 15}, 
-                         cmap = colors, show_edges = True)
+                        #  cmap = colors, 
+                         show_edges = True)
         electrode_list = list(np.unique(pd.cell_data['electrode_name']))
-        plotter.add_text_slider_widget(callback_func, electrode_list, pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
+        plotter.add_text_slider_widget(callback_func, electrode_list, pointa=(0.05, 0.9), pointb=(0.3, 0.9), interaction_event = 'always')
         plotter.show_bounds()
         plotter.add_camera_orientation_widget()
         plotter.show()

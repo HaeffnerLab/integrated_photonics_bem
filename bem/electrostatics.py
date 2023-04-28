@@ -140,7 +140,7 @@ class Result(object):
             mesh = pv.PolyData(mesh_name)
             plotter.add_mesh(mesh, scalars = 'charge', cmap = 'RdBu', show_edges = True)
             electrode_list = list(np.unique(mesh.cell_data['electrode_name']))
-            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
+            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), interaction_event = 'always')
         elif os.access(base_mesh_name, os.R_OK):
             mesh = pv.PolyData(base_mesh_name)
             colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', 
@@ -154,9 +154,10 @@ class Result(object):
                       ]
             plotter.add_mesh(mesh, scalars = 'electrode_name', 
                             scalar_bar_args = {'interactive': True, 'label_font_size': 15}, 
-                            cmap = colors, show_edges = True)
+                            # cmap = colors, 
+                            show_edges = True)
             electrode_list = list(np.unique(mesh.cell_data['electrode_name']))
-            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
+            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), interaction_event = 'always')
 
         data_name = "%s_%s.vtk" % (prefix, name)
         if os.access(data_name, os.R_OK):
