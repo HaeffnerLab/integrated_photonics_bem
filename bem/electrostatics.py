@@ -362,7 +362,8 @@ class Configuration(object):
         self.mesh.to_vtk("%s_%s" % (prefix, self.name),
             area=self.data["area"],
             potential=self.data["potential"],
-            charge=self.charge)
+            charge=self.charge,
+            opts=self.opts)
 
     @classmethod
     def from_vtk(cls, prefix, name):
@@ -374,5 +375,18 @@ class Configuration(object):
         else:
             potentials = None
         obj = cls(mesh, potentials, name)
-        obj.data = dict(area=datasets.get("area"))
-        obj.charge = datasets.get("charge")
+        try:
+            obj.data = dict(area=datasets.get("area"), 
+                            potential = datasets.get("potential"), )
+        except:
+            print("\"Configuration.data\" loading failed")
+        try:
+            obj.charge = datasets.get("charge")
+        except:
+            print("\"Configuration.charge\" loading failed")
+        try:
+            obj.opts = datasets.get("opts")
+        except:
+            print("\"Configuration.opts\" loading failed")
+
+        return obj
