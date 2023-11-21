@@ -64,7 +64,7 @@ def run_job(args):
     print("finished job %s" % job.name)
     result.save(prefix,'vtk')
     # print("finished job %s" % job.name)
-    return job.collect_charges()
+    return job
 
 
 
