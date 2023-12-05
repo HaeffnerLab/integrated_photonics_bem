@@ -48,7 +48,7 @@ class Result(object):
         """
         if self.configuration is not None:
             self.configuration.to_vtk(prefix)
-        sg = pv.ImageData(dims = self.grid.shape, 
+        sg = pv.UniformGrid(dims = self.grid.shape, 
                             spacing = self.grid.step, 
                             origin = self.grid.get_origin())
         for data_name in "potential field field_square".split():
@@ -72,7 +72,7 @@ class Result(object):
         obj = cls()
         obj.configuration = Configuration.from_vtk(prefix, name)
         file_name="%s_%s.vtk" % (prefix, name)
-        ug = pv.ImageData(file_name)
+        ug = pv.UniformGrid(file_name)
         for name in ug.array_names:
             data = ug.point_data[name]
             step = ug.spacing
@@ -118,7 +118,7 @@ class Result(object):
 
 
     @staticmethod
-    def view(prefix, name):
+    def view(prefix, name,isosurfaces = 10, rng = [0, 0.015]):
         """
         construct a generic visualization of base mesh, refined mesh,
         and potential/field/pseudopotential data using pyvista
@@ -138,65 +138,36 @@ class Result(object):
 
         if os.access(mesh_name, os.R_OK):
             mesh = pv.PolyData(mesh_name)
-            charge_min = mesh.cell_data['charge'].min()
-            charge_max = mesh.cell_data['charge'].max()
-            charge_absmax = abs(mesh.cell_data['charge']).max()
-
-            Ncolors = len(pv.LookupTable('bwr').values)
-            Ncolors_half = int(Ncolors/2)
-            mid_to_left = int(np.rint(charge_min/charge_absmax * Ncolors_half))
-            mid_to_right = int(np.rint(charge_max/charge_absmax * Ncolors_half))
-            cmap_values = pv.LookupTable('bwr').values[Ncolors_half + mid_to_left : Ncolors_half + mid_to_right]
-            cmap = pv.LookupTable(values = cmap_values, scalar_range = (charge_min, charge_max))
-            # cmap = pv.LookupTable(cmap = 'bwr', scalar_range = (-4, 4))
-            plotter.add_mesh(mesh, scalars = 'charge', cmap = cmap, show_edges = True)
+            plotter.add_mesh(mesh, scalars = 'charge', cmap = 'RdBu', show_edges = True)
             electrode_list = list(np.unique(mesh.cell_data['electrode_name']))
-            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), interaction_event = 'always')
+            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
         elif os.access(base_mesh_name, os.R_OK):
             mesh = pv.PolyData(base_mesh_name)
-            # colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', 
-            #           '#2ca02c', '#98df8a', '#d62728', '#ff9896', 
-            #           '#9467bd', '#c5b0d5', '#8c564b', '#c49c94', 
-            #           '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', 
-            #           '#bcbd22', '#dbdb8d', '#17becf', '#9edae5',
-            #           # above is colormap tab20 from matplotlib
-            #           '#0000FF', '#7FFF00', '#4B0082', '#FF00FF', '#800000', '#FFFF00', '#B8860B', '#F0E68C', '#FFFFFF',
-            #           # above is blue, chartreuse, indigo, magenta, maroon, yellow, darkgoldenrod, khaki, white
-            #           ]
+            colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', 
+                      '#2ca02c', '#98df8a', '#d62728', '#ff9896', 
+                      '#9467bd', '#c5b0d5', '#8c564b', '#c49c94', 
+                      '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', 
+                      '#bcbd22', '#dbdb8d', '#17becf', '#9edae5',
+                      # above is colormap tab20 from matplotlib
+                      '#0000FF', '#7FFF00', '#4B0082', '#FF00FF', '#800000', '#FFFF00', '#B8860B', '#F0E68C', '#FFFFFF',
+                      # above is blue, chartreuse, indigo, magenta, maroon, yellow, darkgoldenrod, khaki, white
+                      ]
             plotter.add_mesh(mesh, scalars = 'electrode_name', 
                             scalar_bar_args = {'interactive': True, 'label_font_size': 15}, 
-                            # cmap = colors, 
-                            show_edges = True)
+                            cmap = colors, show_edges = True)
             electrode_list = list(np.unique(mesh.cell_data['electrode_name']))
-            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), interaction_event = 'always')
+            plotter.add_text_slider_widget(callback_func, electrode_list,  pointa=(0.05, 0.9), pointb=(0.3, 0.9), event_type = 'always')
 
         data_name = "%s_%s.vtk" % (prefix, name)
         if os.access(data_name, os.R_OK):
-            data = pv.ImageData(data_name)
+            data = pv.UniformGrid(data_name)
             if 'field_square' in data.point_data.keys():
                 scalar_name = 'field_square'
             else:
                 scalar_name = 'potential'
-            iso_surfaces = data.contour(isosurfaces = 10, scalars = scalar_name, 
-                                        # rng = [0, 0.015]
-                                    )
+            iso_surfaces = data.contour(isosurfaces = isosurfaces, scalars = scalar_name, rng = rng)
             plotter.add_mesh(iso_surfaces, cmap = 'Greys', opacity = 1)
-
-            def callback_func_iso(value):
-                iso_slider = data.contour(isosurfaces = 1, scalars = scalar_name, rng = [value, value])
-                plotter.add_mesh(iso_slider, name = 'iso', cmap = 'Greys', scalars = scalar_name, opacity = 1, show_scalar_bar = False)
-            
-            rng_iso = data.get_data_range(scalar_name)
-            plotter.add_slider_widget(
-                    callback=callback_func_iso,
-                    rng=rng_iso,
-                    title='potential/field_square',
-                    # color='dimgray',
-                    pointa=(0.4, 0.9),
-                    pointb=(0.9, 0.9), 
-                    interaction_event = 'always',
-                )
-            # plotter.add_mesh_isovalue(data, cmap = 'Greys', scalars = scalar_name,  pointa=(0.4, 0.9), pointb=(0.9, 0.9))
+            plotter.add_mesh_isovalue(data, cmap = 'Greys', scalars = scalar_name,  pointa=(0.4, 0.9), pointb=(0.9, 0.9))
 
         plotter.show_bounds()
         plotter.add_camera_orientation_widget()
@@ -402,14 +373,5 @@ class Configuration(object):
         else:
             potentials = None
         obj = cls(mesh, potentials, name)
-        try:
-            obj.data = dict(area=datasets.get("area"), 
-                            potential = datasets.get("potential"), )
-        except:
-            print("\"Configuration.data\" loading failed")
-        try:
-            obj.charge = datasets.get("charge")
-        except:
-            print("\"Configuration.charge\" loading failed")
-
-        return obj
+        obj.data = dict(area=datasets.get("area"))
+        obj.charge = datasets.get("charge")

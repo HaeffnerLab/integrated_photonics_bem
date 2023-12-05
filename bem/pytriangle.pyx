@@ -88,8 +88,7 @@ cdef np.ndarray wrap(void* data, int dt, int dim, np.npy_intp* shape):
     cdef np.ndarray a = np.PyArray_SimpleNewFromData(dim, shape, dt, data)
     aw = ArrayWrapper()
     aw.set_data(data)
-    # a.base = <PyObject*> aw
-    np.PyArray_SetBaseObject(a, aw)
+    a.base = <PyObject*> aw
     Py_INCREF(aw)
     return a
 
