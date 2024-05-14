@@ -5,7 +5,7 @@ harmonic expansion of the potential
 import numpy as np
 import math as mt
 from scipy.special import sph_harm
-from scipy import linalg, matrix
+from scipy import linalg#, matrix
 import scipy
 #import pyshtools
 
