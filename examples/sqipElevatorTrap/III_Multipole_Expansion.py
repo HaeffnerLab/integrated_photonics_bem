@@ -15,7 +15,7 @@ import pickle
 # add multipoles package path
 import pandas as pd
 from utils.multipoles import MultipoleControl
-from utils.plottingfuncns import *
+from utils.plottingfuncns import plot_muls, find_nearest, add_value_labels, U2_to_mhz, mhz_to_U2
 
 import numpy as np
 import pandas as pd
@@ -39,8 +39,8 @@ radius = 500e-3
 # area = 3.125e-05
 
 area = 1e-4
-file = 'mit_LL'
-path = 'inter_results/inter_results_mit/'+file+'_'+str(radius)+'_'+str(area)+'_el3_simulation.pkl'
+file = 'elevator-single-trap'
+path = 'trap_output_files/'+file+'_'+str(radius)+'_'+str(area)+'_simulation.pkl'
 f = open(path, 'rb')
 trap = pickle.load(f)
 #############################################################
@@ -55,7 +55,7 @@ trap = pickle.load(f)
 
 #strs are the string names of your DC electrodes (copy from loading pickle,
 #I wrote it a second time so that the code runs in case you comment out that code)
-strs = "DC1 DC2 DC3 DC4 DC5 DC6 DC7 DC8 DC9 DC10 DC11 DC12 DC13 DC14 DC15 DC16 DC17 DC18 DC19 DC20".split()
+strs = "DC1 DC2 DC3 DC4 DC5 DC6 DC7 DC8 DC9 DC10".split()
 
 # strs = "DC5".split()
 strs = list(trap['electrodes'].keys())
@@ -64,8 +64,8 @@ strs = list(trap['electrodes'].keys())
 # yl = 72.65*1e-3
 
 xl = 0
-yl = 50e-3
-zl=-240e-3
+yl = 0
+zl = 20e-3
 
 
 position = [xl, yl, zl]
@@ -84,16 +84,18 @@ controlled_electrodes = []
 
 # ## (2) set parameters for multipole expansion
 # notes:
-# * new from shuqi's code- 'excl' defines a dictionary of excluded electrodes the dictionary index (left of colon)  is the electrode you want to exclude its value (right of colon) defines what you want to set it to if you set it to "gnd" it will always set the voltage of that DC to 0 if you set it to "DCx" it will always set the voltage of that DC to be the same as DCx this is in case you have trap shorts, if you don't need it just don't include the indices
+# * new from shuqi's code- 'excl' defines a dictionary of excluded electrodes the dictionary index (left of colon)  
+# is the electrode you want to exclude its value (right of colon) defines what you want to set it to if you set it 
+# to "gnd" it will always set the voltage of that DC to 0 if you set it to "DCx" it will always set the voltage of 
+# that DC to be the same as DCx this is in case you have trap shorts, if you don't need it just don't include the indices
 
 # In[4]:
 
 
 excl = {
-    "DC9":"gnd",
-    "DC11":"gnd",
+    "RF2":"gnd",
     "RF":"gnd",
-    "DC0":"gnd"
+    "DC10":"gnd"
 }
 
 #build the controlled electrodes list, given the constraints of the 'excl' list
@@ -112,11 +114,11 @@ print(np.shape(trap['electrodes'][electrode]["potential"]))
 
 # create MultipoleControl object
 s = MultipoleControl(trap, position, roi, controlled_electrodes, used_multipoles, order)
-s.electrode_positions = OrderedDict([('DC1', [0, 1]), ('DC2', [0, 2]), ('DC3', [0, 3]), ('DC4', [0, 4]), 
-             ('DC5', [0, 5]), ('DC6', [0, 6]), ('DC7', [0, 7]), ('DC8', [0, 8]), 
-             ('DC9', [0, 9]), ('DC10', [1, 5]), ('DC11', [3, 1]), ('DC12', [3, 2]), 
-             ('DC13', [3, 3]), ('DC14', [3, 4]), ('DC15', [3, 5]),('DC16', [3, 6]),
-             ('DC17', [3, 7]),('DC18', [3, 8]),('DC19', [3, 9]),('DC20', [2, 5])])
+# s.electrode_positions = OrderedDict([('DC1', [0, 1]), ('DC2', [0, 2]), ('DC3', [0, 3]), ('DC4', [0, 4]), 
+#              ('DC5', [0, 5]), ('DC6', [0, 6]), ('DC7', [0, 7]), ('DC8', [0, 8]), 
+#              ('DC9', [0, 9]), ('DC10', [1, 5]), ('DC11', [3, 1]), ('DC12', [3, 2]), 
+#              ('DC13', [3, 3]), ('DC14', [3, 4]), ('DC15', [3, 5]),('DC16', [3, 6]),
+#              ('DC17', [3, 7]),('DC18', [3, 8]),('DC19', [3, 9]),('DC20', [2, 5])])
 
 #     return s
 # s,used_multipoles = generate_s(excl)
@@ -125,7 +127,7 @@ s.electrode_positions = OrderedDict([('DC1', [0, 1]), ('DC2', [0, 2]), ('DC3', [
 
 # In[5]:
 
-
+# RF potential plot
 # fig = plt.figure()
 # ax = plt.axes(projection='3d')
 import plotly.graph_objects as go
@@ -150,7 +152,7 @@ minp = np.min(d)
 maxp= np.max(d)
 CS = plt.contour(trap['X']*1e3,trap['Y']*1e3,np.transpose(d),levels=20,cmap=plt.cm.coolwarm)
 plt.clabel(CS, inline=1, fontsize=25)
-plt.xlabel(r"Horiontal Axial Location ($\mu$m)",fontsize=20)
+plt.xlabel(r"Horizontal Axial Location ($\mu$m)",fontsize=20)
 plt.grid()
 plt.ylabel(r"Vertical Axial Location ($\mu$m)",fontsize=20)
 plt.show()
@@ -171,10 +173,12 @@ fig.update_layout( autosize=False,
 
 fig.show()
 
+#%%
+
 ################# writing to cfile ############################
 #write solution text file (cfile, sqip uses .txt format tho)
 #this will be generated in the 'Electrodes' directory
-s.write_txt('mit_LL_ele3', strs, excl)
+s.write_txt(f'trap_output_files/{file}', strs, excl)
 ###############################################################
 
 
@@ -192,7 +196,7 @@ print('Normalization factors:', s.normalization_factors)
 # In[6]:
 
 
-height_list = trap['Z'][np.arange(3,len(trap['Z'])-3,20)]
+height_list = trap['Z'][np.arange(3,len(trap['Z'])-3,1)]
 numMUltipoles = len(s.multipole_print_names)
 ne = len(s.electrode_names)
 multipoles_vs_height = np.zeros((len(height_list), numMUltipoles, ne))
@@ -213,9 +217,7 @@ for i, height in enumerate(height_list):
 # In[7]:
 
 
-fig = plt.figure()
-fig.canvas.draw()
-fig.tight_layout(pad=1)
+
 plot_muls(s,xl,zl,roi,height= 50, ez=0, ex=0, ey=0,u2=10, u5=0, u1=0, u3=0,u4=0)
 
 
@@ -231,6 +233,10 @@ mpl.rc('ytick', labelsize=10)
 u4 = 0
 # plot_U2(s,xl,zl,roi,height=50.00, ez=0, ex=0, ey=0, u2=10, u5=0, u1=0, u3=0)
 def plot_U21(s,xl,zl,roi,height, ey, ez, ex, u3, u2, u5, u1,view='zy'):
+    fig = plt.figure()
+    fig.canvas.draw()
+    fig.tight_layout(pad=1)
+    
     position1 = [xl, height * 1e-3, zl]
     s.update_origin_roi(position1, roi)
     multipole_coeffs = {'Ey': ey, 'Ez': ez, 'Ex': ex, 'U3': u3, 'U2': u2, 'U5': u5, 'U1': u1,'U4':u4}
@@ -317,15 +323,17 @@ for i, height in enumerate(height_list):
     multipoles_vs_height[i] = np.asarray(s.multipole_expansion.loc[s.multipole_names])
 
 size = 15
-electrode_list = ['DC3','DC4','DC5','DC6','DC14','DC15','DC16']
+electrode_list = ['DC1', 'DC2', 'DC3', 'DC4', 'DC5', 'DC6', 'DC7', 'DC8', 'DC9']
 
 
-fig, ax = plt.subplots(numMUltipoles, 1, figsize=(20, 60))
+fig=[None]*numMUltipoles
+ax=[None]*numMUltipoles
 for i, mul in enumerate(s.multipole_print_names):
+    fig[i], ax[i] = plt.subplots(1, 1, figsize=(20, 60))
     ax[i].set_prop_cycle(linestyle = ['-','-','-','-','-','--','--','--','--','--'],color= ['black','blue','purple','red','orange','black','blue','purple','red','orange'])
     for ele in electrode_list:
         j = s.electrode_names.index(ele)
-        ax[i].plot(height_list*1e3, multipoles_vs_height[:, i, j], label=ele)
+        ax[i].plot(height_list*1e3, multipoles_vs_height[:, i, j], label=ele, marker='o')
         ax[i].grid(visible=True)
         if i == 0:
             ax[i].set_ylabel('V')
@@ -334,7 +342,7 @@ for i, mul in enumerate(s.multipole_print_names):
         else:
             ax[i].set_ylabel('V/mm^2')
         ax[i].set_title(mul, fontsize=size)
-        ax[i].set_xticks(np.arange(-200,200,50))
+        # ax[i].set_xticks(np.arange(-200,200,50))
         ax[i].set_xlabel('Axial Location (um)', fontsize=size)
     ax[i].legend(fontsize=size, bbox_to_anchor=(1, 1))
 
@@ -348,7 +356,7 @@ for i, mul in enumerate(s.multipole_print_names):
 numMUltipoles = len(used_multipoles)
 Coeffs = pd.DataFrame()
 for height in height_list:
-    position1 = [xl, yl,height*1e-3]
+    position1 = [xl, yl,height]
     s.update_origin_roi(position1, roi)
 
     Coeffs_temp = pd.Series(dtype=float)
@@ -460,6 +468,8 @@ def plot_control_config(exclusion_list,ax2):
     ax2.tick_params(labelsize=size)
     ax2.legend(fontsize=size)
     ax2.grid(which='both')
+    
+    
 excl0 = {
     "RF":"gnd",
     "DC11":"gnd",

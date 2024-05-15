@@ -93,12 +93,15 @@ def plot_muls(s,xl,zl,roi,height, ey, ez, ex, u3, u2, u5, u1, u4):
     s.update_origin_roi(position1, roi)
     multipole_coeffs = {'Ey': ey, 'Ez': ez, 'Ex': ex, 'U3': u3, 'U2': u2, 'U5': u5, 'U1': u1,'U4':u4}
     voltages = s.setMultipoles(multipole_coeffs)
+    
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(30, 12))
     ax1.bar(s.controlled_elecs, voltages)
     ax1.set_xticklabels(s.controlled_elecs, rotation=45, fontsize=12)
     #     ax1.set_ylim(-25, 40)
     ax1.set_ylabel('V')
+    
     print(s.controlled_elecs)
+    
     xpos = [s.electrode_positions[ele][0] for ele in s.controlled_elecs]
     ypos = [s.electrode_positions[ele][1] for ele in s.controlled_elecs]
     plot = ax2.scatter(xpos, ypos, 1000, list(voltages), cmap='bwr')

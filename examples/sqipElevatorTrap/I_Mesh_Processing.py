@@ -77,7 +77,7 @@ from bem.formats import stl
 
 radius= 500e-3
 area = 1e-4
-file = 'elevator-single-trap-optical-axis'
+file = 'elevator-single-trap'
 stl_path = 'trap_models/'+file+'.stl'
 fout_name = 'trap_output_files/'+file+'_'+str(radius)+'_'+str(area)+'.pkl'
 s_nta = stl.read_stl(open(stl_path, "rb"))
