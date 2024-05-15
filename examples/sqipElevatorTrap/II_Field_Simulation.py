@@ -52,9 +52,9 @@ from utils.helper_functions import run_job, write_pickle
 radius= 500e-3
 area = 1e-4
 file = 'elevator-single-trap'
-file_in_name = 'trap_output_files/'+file+'_'+str(radius)+'_'+str(area)+'.pkl'
+file_in_name = 'trap_output_files/mesh files/'+file+'_'+str(radius)+'_'+str(area)+'.pkl'
 vtk_out = "trap_output_files/vtks/"+file
-file_out_name = 'trap_output_files/'+file+'_'+str(radius)+'_'+str(area)+'_simulation'
+file_out_name = 'trap_output_files/simulation outputs/'+file+'_'+str(radius)+'_'+str(area)+'_simulation'
 
 
 #open the mesh that will be used for simulation

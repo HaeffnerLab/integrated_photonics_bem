@@ -178,7 +178,7 @@ fig.show()
 ################# writing to cfile ############################
 #write solution text file (cfile, sqip uses .txt format tho)
 #this will be generated in the 'Electrodes' directory
-s.write_txt(f'trap_output_files/{file}', strs, excl)
+s.write_txt(f'trap_output_files/solution files/{file}', strs, excl)
 ###############################################################
 
 
