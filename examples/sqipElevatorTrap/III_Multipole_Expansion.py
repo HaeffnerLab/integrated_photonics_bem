@@ -80,8 +80,7 @@ nROI = 3
 roi = [nROI, nROI, nROI]
 order = 3
 
-#controlled electrodes- this will define which electrodes will be used to control your trap
-controlled_electrodes = []
+
 
 
 # ## (2) set parameters for multipole expansion
@@ -93,6 +92,9 @@ controlled_electrodes = []
 
 # In[4]:
 
+    
+#controlled electrodes- this will define which electrodes will be used to control your trap
+controlled_electrodes = []
 
 excl = {
     "RF2":"gnd",
@@ -111,6 +113,8 @@ for electrode in strs:
 #which multipoles you want to include in multipole calculations
 used_order1multipoles = ['Ex', 'Ey', 'Ez']
 used_order2multipoles = ['U1', 'U2', 'U3','U4','U5']
+used_order2multipoles = ['U1', 'U2', 'U3', 'U5']
+# used_order2multipoles = ['U1', 'U2', 'U3']
 used_multipoles = used_order1multipoles + used_order2multipoles
 print(np.shape(trap['electrodes'][electrode]["potential"]))
 
@@ -218,12 +222,12 @@ for i, height in enumerate(height_list):
 
 # In[7]:
 
+height=70
+# for height in height_list*1e3:
+plot_muls(s,xl,zl,roi,height = height, ez=0, ex=0, ey=0, u2=10, u5=0, u1=0, u3=0, u4=0)
 
 
-plot_muls(s,xl,zl,roi,height= 100, ez=0, ex=0, ey=0,u2=10, u5=0, u1=0, u3=0,u4=0)
-
-
-# ## Generating Axial Confinment
+# ## Generating Axial Confinement
 # Here are plots of asking for a pure U2 multiple, which generates confinement in the z-dir
 
 # In[8]:
