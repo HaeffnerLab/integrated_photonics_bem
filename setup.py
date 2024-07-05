@@ -48,13 +48,12 @@ else:
 
 
 setup(
-    name="pyfastlap",
+    name="bem",
     description="BEM FMM Laplace solver",
     long_description= """Python bindings for Fastlap""",
-    version="0.0+dev",
-    author="Robert Jordens",
-    author_email="jordens@gmail.com",
-    url="http://launchpad.net/pyfastlap",
+    version="1.0+dev",
+    author="Robert Jordens, Ben Saarel, Shuqi Xu, Qian Yu, Nicole Greene, et. al.",
+    url="https://github.com/Andris-Huang/bem",
     license="multiple",
     python_requires="<3.10",
     install_requires=[
