@@ -42,6 +42,8 @@ radius = 500e-3
 
 area = 1e-4
 file = 'elevator-single-trap'
+# file = 'elevator-trap-changed-DC'
+
 path = 'trap_output_files/simulation outputs/'+file+'_'+str(radius)+'_'+str(area)+'_simulation.pkl'
 f = open(path, 'rb')
 trap = pickle.load(f)
@@ -113,7 +115,7 @@ for electrode in strs:
 #which multipoles you want to include in multipole calculations
 used_order1multipoles = ['Ex', 'Ey', 'Ez']
 used_order2multipoles = ['U1', 'U2', 'U3','U4','U5']
-used_order2multipoles = ['U1', 'U2', 'U3', 'U5']
+# used_order2multipoles = ['U1', 'U2', 'U3', 'U5']
 # used_order2multipoles = ['U1', 'U2', 'U3']
 used_multipoles = used_order1multipoles + used_order2multipoles
 print(np.shape(trap['electrodes'][electrode]["potential"]))
@@ -222,9 +224,9 @@ for i, height in enumerate(height_list):
 
 # In[7]:
 
-height=70
-# for height in height_list*1e3:
-plot_muls(s,xl,zl,roi,height = height, ez=0, ex=0, ey=0, u2=10, u5=0, u1=0, u3=0, u4=0)
+height=30
+for height in height_list*1e3:
+    plot_muls(s,xl,zl,roi,height = height, ez=0, ex=0, ey=0, u2=10, u5=0, u1=0, u3=0, u4=0)
 
 
 # ## Generating Axial Confinement

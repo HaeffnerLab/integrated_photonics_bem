@@ -49,9 +49,11 @@ from utils.helper_functions import run_job, write_pickle
 # In[2]:
 
 
-radius= 500e-3
+radius= 1000e-3
 area = 1e-4
 file = 'elevator-single-trap'
+# file = 'elevator-trap-changed-DC'
+
 file_in_name = 'trap_output_files/mesh files/'+file+'_'+str(radius)+'_'+str(area)+'.pkl'
 vtk_out = "trap_output_files/vtks/"+file
 file_out_name = 'trap_output_files/simulation outputs/'+file+'_'+str(radius)+'_'+str(area)+'_simulation'
@@ -77,7 +79,7 @@ with open(file_in_name,'rb') as f:
 with open(file_in_name,'rb') as f:
     mesh_unit,xl,yl,zl,mesh,electrode_names= pickle.load(f) # import results from mesh processing
 # grid to evalute potential and fields atCreate a grid in unit of scaled length mesh_unit. Only choose the interested region (trap center) to save time.
-Lx, Ly, Lz = 20*1e-3, 20*1e-3, 100*1e-3 # in the unit of scaled length mesh_unit. this is the simulation volume
+Lx, Ly, Lz = 20*1e-3, 50*1e-3, 20*1e-3 # in the unit of scaled length mesh_unit. this is the simulation volume
 # xl,yl,zl = -3.75*1e-3,72*1e-3,270*1.0e-3
 xl,yl,zl = 0.0e-3, 0.0e-3, 60.0e-3 # this is the coordinates of the center of the volume
 s = 2e-3
@@ -126,6 +128,7 @@ def run_map():
     # pmap(run_job, ((jobs[i], grid, vtk_out,i,len(jobs)) for i in np.arange(len(jobs))))
     for i in np.arange(len(jobs)):
         run_job((jobs[i], grid, vtk_out,i,len(jobs)))
+        print(f'Job {i} time elapsed: {time()-t0} s')
     print("Computing time: %f s"%(time()-t0))
     # run_job casts a word after finishing ea"ch electrode.
 

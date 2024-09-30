@@ -75,8 +75,9 @@ from bem import Electrodes, Sphere, Mesh, Grid, Configuration, Result, Box
 from bem.formats import stl
 # stl_path = "inter_results/"+"htrap"+".stl"  
 
-radius= 500e-3
+radius= 1000e-3
 area = 1e-4
+#file = 'elevator-single-trap'
 file = 'elevator-single-trap'
 stl_path = 'trap_models/'+file+'.stl'
 fout_name = 'trap_output_files/mesh files/'+file+'_'+str(radius)+'_'+str(area)+'.pkl'
