@@ -37,7 +37,7 @@ module_path = os.path.abspath('')
 ###### loading in pickle file ###############################
 # import data, and define parameters
 module_path = os.path.abspath('')
-radius = 500e-3
+radius = 1000e-3
 # area = 3.125e-05
 
 area = 1e-4

@@ -34,12 +34,10 @@ import pickle
 import numpy as np
 # import os
 import pyvista as pv
-# import sys
+import sys
 import vtk
 #sys.path.append('/home/sqip/Documents/github/bem')
 from bem import Electrodes, Sphere, Mesh, Grid, Configuration, Result
-# import multiprocessing 
-# multiprocessing.set_start_method("fork")
 from utils.helper_functions import run_job, write_pickle
 
 
@@ -106,7 +104,8 @@ shape = (nx,ny,nz)
 # `pmap.multiprocessing.Pool(processes).map(job,list)` is used to do several simulations in parallel (depends what you define as parallel). 
 # 
 # `Pool(number)` creates a set of worker processes, called a pool, to submit tasks to. When a job is submitted to a worker process, the worker process executes that task. <b>Each worker process is associated with its own CPU core</b> which means the number of worker processes in the pool is the number of parallel computations that can be performed. <b>number</b> is the number of worker processes to start. 
-# 
+# import multiprocessing 
+# multiprocessing.set_start_method("fork")
 # In other words, if you want to use only 1 core at a time, write Pool(1), if you want 2 cores write Pool(2). If no number is given, `Pool` will create as many worker processes as there are cores on the computer. This speeds things up (you can use all cores simulatneously), but it is important to point out that since each worker process will be requesting RAM, this will consume more memory on your computer than Pool(1). If the total RAM requested exceeds what your computer has, <b>you're gonna have a bad time</b>. One of two things will likely happen- first is that your computer will try to start using 'swap space' which is using disk memory as RAM which will slow down the computation significantly- this is not obvious unless you are looking at the resources being used by your computer (look for normal memory used and swap memory used on system monitor). Second is that your computer wil crash because the worker processes have consumed all the memory. 
 # 
 # `Pool.map`(<b>job</b>,<b>jobs_list</b>) takes two arguments:
@@ -117,18 +116,26 @@ shape = (nx,ny,nz)
 
 # In[4]:
 
+multithread = True
+if sys.platform == 'darwin':
+    multithread = False
 
 jobs = list(Configuration.select(mesh,'DC.*','RF', 'RF2'))    # select() picks one electrode each time.
 # run the different electrodes on the parallel pool
-# pmap = multiprocessing.Pool(1).map # parallel map
-#pmap = map # serial map
+if multithread:
+    import multiprocessing 
+    multiprocessing.set_start_method("fork")
+    pmap = multiprocessing.Pool(6).map # parallel map
+    # pmap = map # serial map
 t0 = time()
 # range(len(jobs))
 def run_map():
-    # pmap(run_job, ((jobs[i], grid, vtk_out,i,len(jobs)) for i in np.arange(len(jobs))))
-    for i in np.arange(len(jobs)):
-        run_job((jobs[i], grid, vtk_out,i,len(jobs)))
-        print(f'Job {i} time elapsed: {time()-t0} s')
+    if multithread:
+        pmap(run_job, ((jobs[i], grid, vtk_out,i,len(jobs)) for i in np.arange(len(jobs))))
+    else:
+        for i in np.arange(len(jobs)):
+            run_job((jobs[i], grid, vtk_out,i,len(jobs)))
+            print(f'Job {i} time elapsed: {time()-t0} s')
     print("Computing time: %f s"%(time()-t0))
     # run_job casts a word after finishing ea"ch electrode.
 
