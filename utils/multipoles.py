@@ -186,7 +186,7 @@ class MultipoleControl:
 
     def setMultipoles(self, coeffs):
         '''
-        This function takes a set of desired multipole coefficients and returns the voltages needed to acheive that.
+        This function takes a set of desired multipole coefficients and returns the voltages needed to achieve that.
         Method: min norm
         input i.e. coeffs = {'Ex: 1', 'U2': 20}
         '''
