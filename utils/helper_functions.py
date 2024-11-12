@@ -290,8 +290,8 @@ def find_saddle_drag(V,X,Y,Z,dim, scale=1, Z0=None,min=False):
     #################################################################################################
     if dim==2: # Extrapolate to the values of A at z0.
         V2=V
+        Ks=0 # in case there is no saddle point
         if len(V.shape)==3:
-            Ks=0 # in case there is no saddle point
             for i in range(len(Z)):
                 if Z[i-1]<Z0 and Z[i]>=Z0:
                     Ks=i-1
