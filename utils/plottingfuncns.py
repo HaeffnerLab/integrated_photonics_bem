@@ -92,6 +92,7 @@ def plot_muls(s,xl,zl,roi,height, **multipoles): # ey, ez, ex, u3, u2, u5, u1, u
     position1 = [xl, height * 1e-3, zl]
     s.update_origin_roi(position1, roi)
     multipole_coeffs = {key:multipoles[key.lower()] for key in s.used_multipoles}
+    print("multipole_coeffs: ", multipole_coeffs)
         
     #multipole_coeffs = {'Ey': ey, 'Ez': ez, 'Ex': ex, 'U3': u3, 'U2': u2, 'U5': u5, 'U1': u1,'U4':u4}
     voltages = s.setMultipoles(multipole_coeffs)
