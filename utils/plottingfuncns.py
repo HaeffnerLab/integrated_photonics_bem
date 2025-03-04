@@ -112,6 +112,10 @@ def plot_muls(s,xl,zl,roi,height, **multipoles): # ey, ez, ex, u3, u2, u5, u1, u
     ax2.set_ylim(min(ypos) - 1, max(ypos) + 1)
     plt.subplots_adjust(bottom=0.25)
     plt.show()
+
+    # Convert voltages into a dictionary with electrode names as keys
+    voltages_dict = dict(zip(s.controlled_elecs, voltages))
+    return voltages_dict
     
     
 def U2_to_mhz(u2):
