@@ -12,6 +12,12 @@ from bem import Electrodes, Sphere, Mesh, Grid, Configuration, Result, Box
 from bem.formats import stl
 from collections import OrderedDict
 
+#here is the location that will be the reference point for further meshing
+#usually, this is the ion's location, specified in appropriate units (usually millimeters)
+zl = ( -450 + 560 ) *1e-3
+yl = 75*1e-3
+xl = 3.75*1e-3
+
 mesh_unit = 1e-3
 #radius is the radius of the sphere from the ions location to generate a finer
 radius= 500e-3
@@ -78,12 +84,6 @@ mesh = Mesh.from_mesh(stl.stl_to_mesh(*s_nta, scale=1,
 # ================================
 # Remesh the electrodes
 # ================================
-
-#here is the location that will be the reference point for further meshing
-#usually, this is the ion's location, specified in appropriate units (usually millimeters)
-zl = ( -450 + 560 ) *1e-3
-yl = 75*1e-3
-xl = 3.75*1e-3
 
 mesh.triangulate(opts="",new = False)
 
